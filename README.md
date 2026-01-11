@@ -10,6 +10,7 @@ A full-stack security tool that detects phishing URLs using a hybrid approach: *
 - **Visual Risk Gauge**: Professional grade circular gauge showing probability of phishing (Safe/Suspicious/Phishing).
 - **Threat Indicators**: Clear pass/fail signals for SSL validity, domain age, and suspicious patterns.
 - **WHOIS & SSL Analysis**: Automatically fetches domain registration dates and certificate issuers to catch "freshly minted" phishing sites.
+- **Batch Scanning with Rate Limiting**: Support for bulk URL analysis via file upload (.txt), protected by a configurable rate limit (customizable in `app/config.py`) to prevent overuse of resources.
 - **Cyber-Security UI**: A professional, dark-themed interface designed for security analysts.
 
 ## 🛠️ Technology Stack
