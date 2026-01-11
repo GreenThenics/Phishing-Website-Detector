@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, render_template, current_app
 from app.tasks.scan_task import run_scan, perform_scan
 from app.db.mongo import get_scan_result, save_batch_info, get_batch_results
+from app.config import Config
 import threading
 import uuid
 
@@ -81,6 +82,11 @@ def scan_batch():
             
             if not urls:
                  return jsonify({"error": "File is empty or no valid URLs found"}), 400
+
+            if len(urls) > Config.MAX_BATCH_SIZE:
+                return jsonify({
+                    "error": f"Batch limits exceeded. Max {Config.MAX_BATCH_SIZE} URLs allowed per file."
+                }), 400
                  
             batch_id = str(uuid.uuid4())
             task_ids = []
