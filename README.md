@@ -2,7 +2,7 @@
 
 A full-stack security tool that detects phishing URLs using a hybrid approach: **Machine Learning heuristics**, **WHOIS domain age verification**, and **SSL certificate analysis**.
 
-![Landing Page Screenshot](https://raw.githubusercontent.com/sahil/phishing-detector/static/screenshot_landing.png)
+![Landing Page Screenshot](static/landing_page.jpeg)
 
 ## 🛡️ Key Features
 
@@ -31,7 +31,7 @@ A full-stack security tool that detects phishing URLs using a hybrid approach: *
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/sahil/phishing-detector.git
+   git clone https://github.com/GreenThenics/Phishing-Website-Detector.git
    cd phishing-detector
    ```
 
