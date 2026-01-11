@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+
+# ML Models (Large files)
+model/*.pkl
+
+# Tests
+test_api.py
+test_task_direct.py

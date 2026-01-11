@@ -1,0 +1,14 @@
+flask
+celery
+pymongo
+scikit-learn
+pandas
+numpy
+requests
+beautifulsoup4
+python-dotenv
+redis
+joblib
+python-whois
+tldextract
+dnspython
