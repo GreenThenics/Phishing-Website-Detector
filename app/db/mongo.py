@@ -35,6 +35,65 @@ def save_scan_result(result_data):
 
 def get_scan_result(query_filter):
     db = get_db()
-    # query_filter could be {"task_id": ...} or {"url": ...}
-    # Currently scan_task doesn't save task_id in the doc. We might need to change scan_task to save task_id.
     return db.scan_results.find_one(query_filter, {"_id": 0})
+
+def save_batch_info(batch_id, tasks, original_filename):
+    """
+    tasks: list of dicts like [{"task_id": "...", "url": "..."}]
+    """
+    db = get_db()
+    batch_doc = {
+        "batch_id": batch_id,
+        "tasks": tasks, 
+        "filename": original_filename,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    db.batches.insert_one(batch_doc)
+
+def get_batch_info(batch_id):
+    db = get_db()
+    return db.batches.find_one({"batch_id": batch_id}, {"_id": 0})
+
+def get_batch_results(batch_id):
+    db = get_db()
+    batch = db.batches.find_one({"batch_id": batch_id})
+    if not batch:
+        return None
+        
+    tasks_meta = batch.get("tasks", []) # List of {task_id, url}
+    task_ids = [t["task_id"] for t in tasks_meta]
+    
+    results_cursor = db.scan_results.find({"task_id": {"$in": task_ids}}, {"_id": 0})
+    results = list(results_cursor)
+    
+    # Map results by task_id for easy lookup
+    results_map = {r["task_id"]: r for r in results}
+    
+    aggregated = []
+    for meta in tasks_meta:
+        tid = meta["task_id"]
+        url = meta["url"]
+        res = results_map.get(tid)
+        
+        if res:
+            aggregated.append({
+                "task_id": tid,
+                "status": "done",
+                "result": res
+            })
+        else:
+            # We insert a partial result so UI has the URL
+            aggregated.append({
+                "task_id": tid,
+                "status": "processing",
+                "result": {"url": url} 
+            })
+            
+    return {
+        "batch_id": batch_id,
+        "filename": batch.get("filename"),
+        "total": len(tasks_meta),
+        "completed": len(results),
+        "tasks": aggregated
+    }
+

@@ -22,6 +22,9 @@
             --border: #2d3748;
             --text: #e2e8f0;
             --text-muted: #94a3b8;
+            --safe: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
             --glow: rgba(99, 102, 241, 0.15);
         }
 
@@ -110,6 +113,14 @@
             box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2), 0 0 20px rgba(99, 102, 241, 0.1);
         }
 
+        .search-box.drag-active {
+            border-color: var(--primary);
+            border-style: dashed;
+            background: rgba(99, 102, 241, 0.25);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+            transform: scale(1.02);
+        }
+
         .shield-icon {
             color: var(--text-muted);
             margin-left: 1rem;
@@ -117,21 +128,26 @@
             align-items: center;
         }
 
+        input[type="text"],
         input[type="url"] {
             flex: 1;
             background: transparent;
             border: none;
             color: white;
-            font-size: 1.1rem;
+            font-size: 1rem;
             padding: 1rem;
-            font-family: 'Inter', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             min-width: 0;
+            letter-spacing: 0.02em;
         }
 
+        input[type="text"]::placeholder,
         input[type="url"]::placeholder {
-            color: #4b5563;
+            color: #64748b;
+            font-family: 'JetBrains Mono', monospace;
         }
 
+        input[type="text"]:focus,
         input[type="url"]:focus {
             outline: none;
         }
@@ -154,6 +170,15 @@
             box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
         }
 
+        .format-caption {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.5rem;
+            text-align: right;
+            padding-right: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
         /* Stats Row */
         .stats-row {
             display: flex;
@@ -173,9 +198,9 @@
         }
 
         .stat-dot {
-            width: 6px;
-            height: 6px;
-            background-color: var(--primary);
+            width: 8px;
+            height: 8px;
+            background-color: var(--safe);
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
@@ -281,6 +306,15 @@
             letter-spacing: 0.05em;
         }
 
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
         .footer-link {
             display: block;
             color: var(--text-muted);
@@ -309,6 +343,20 @@
 
             100% {
                 opacity: 0.4;
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
             }
         }
 
@@ -355,10 +403,25 @@
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
                 </div>
-                <input type="url" id="url" name="url" placeholder="Enter target URL (e.g. https://www.google.com)"
-                    required autocomplete="off">
+                <input type="text" id="url" name="url" placeholder="Enter target URL or upload" required
+                    autocomplete="off">
+
+                <!-- Hidden File Input & Trigger -->
+                <input type="file" id="fileInput" accept=".txt" style="display: none;">
+                <button type="button" id="uploadBtn" title="Upload Batch List"
+                    style="background:none; border:none; color: var(--text-muted); cursor: pointer; padding: 0.5rem; display: flex; align-items: center; transition: color 0.2s;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                        </path>
+                    </svg>
+                </button>
+
                 <button type="submit" class="btn-scan" id="submitBtn">Deep Scan</button>
             </div>
+
+            <div class="format-caption">Supported formats: .txt (one URL per line)</div>
 
             <div class="stats-row">
                 <div class="stat-item">
@@ -446,48 +509,165 @@
     </footer>
 
     <script>
+        /* Updated Script Logic */
         const form = document.getElementById('scanForm');
+        const searchBox = document.querySelector('.search-box');
+
         const submitBtn = document.getElementById('submitBtn');
         const errorMsg = document.getElementById('errorMsg');
         const loadingState = document.getElementById('loadingState');
         const progressText = document.getElementById('progressText');
         const inputUrl = document.getElementById('url');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
 
         let progressInterval = null;
+        let selectedBatchFile = null;
+
+        // Trigger file select
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedBatchFile = e.target.files[0];
+                inputUrl.value = `[BATCH] ${selectedBatchFile.name}`;
+                inputUrl.readOnly = true;
+                uploadBtn.style.color = 'var(--primary)';
+            }
+        });
+
+        // Clear file mode if user tries to reset (add double click or similar if desired, 
+        // but for now, we need a way to clear. Let's say clicking the input clears if in batch mode)
+        inputUrl.addEventListener('click', () => {
+            if (selectedBatchFile) {
+                // Confirm clear? Or just clear.
+                selectedBatchFile = null;
+                inputUrl.value = '';
+                inputUrl.readOnly = false;
+                fileInput.value = ''; // Reset file input
+                uploadBtn.style.color = 'var(--text-muted)';
+            }
+        });
+
+        // Global Drag Prevention (prevent opening file in browser)
+        window.addEventListener('dragover', function (e) {
+            e.preventDefault();
+        }, false);
+        window.addEventListener('drop', function (e) {
+            e.preventDefault();
+        }, false);
+
+        // Drag and Drop Logic for Search Box
+        const dragEvents = ['dragenter', 'dragover', 'dragleave', 'drop'];
+
+        dragEvents.forEach(eventName => {
+            searchBox.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            searchBox.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            searchBox.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            searchBox.classList.add('drag-active');
+        }
+
+        function unhighlight(e) {
+            searchBox.classList.remove('drag-active');
+        }
+
+        searchBox.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.txt')) {
+                    selectedBatchFile = file;
+                    inputUrl.value = `[BATCH] ${file.name}`;
+                    inputUrl.readOnly = true;
+                    uploadBtn.style.color = 'var(--primary)';
+                } else {
+                    alert('Only .txt files are supported for batch scanning.');
+                }
+            }
+        }
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const url = inputUrl.value;
 
-            // UI Transition
+            errorMsg.style.display = 'none';
             form.classList.add('hidden');
             loadingState.style.display = 'block';
-            errorMsg.style.display = 'none';
-            progressText.textContent = '[+] Initializing scan engine...';
 
             try {
-                const response = await fetch('/scan', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url })
-                });
+                if (selectedBatchFile) {
+                    /* Batch Mode */
+                    progressText.textContent = '[+] Uploading batch list...';
+                    const formData = new FormData();
+                    formData.append('file', selectedBatchFile);
 
-                const data = await response.json();
+                    const response = await fetch('/scan/batch', {
+                        method: 'POST',
+                        body: formData
+                    });
 
-                if (response.ok) {
-                    progressInterval = setInterval(() => pollProgress(data.task_id), 500);
-                    // Fallback
-                    setTimeout(() => {
-                        window.location.href = `/result/${data.task_id}`;
-                    }, 15000);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        progressText.textContent = `[+] Initiated processing for ${data.url_count} URLs...`;
+                        setTimeout(() => {
+                            window.location.href = `/batch/${data.batch_id}`;
+                        }, 1000);
+                    } else {
+                        throw new Error(data.error || 'Batch scan failed');
+                    }
+
                 } else {
-                    throw new Error(data.error || 'Failed to start scan');
+                    /* Single URL Mode */
+                    const url = inputUrl.value;
+                    if (!url) throw new Error("Please enter a URL");
+
+                    progressText.textContent = '[+] Initializing scan engine...';
+                    const response = await fetch('/scan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        progressInterval = setInterval(() => pollProgress(data.task_id), 500);
+                        // Fallback
+                        setTimeout(() => {
+                            window.location.href = `/result/${data.task_id}`;
+                        }, 15000);
+                    } else {
+                        throw new Error(data.error || 'Failed to start scan');
+                    }
                 }
             } catch (err) {
                 loadingState.style.display = 'none';
                 form.classList.remove('hidden');
                 errorMsg.textContent = err.message;
                 errorMsg.style.display = 'block';
+
+                // Reset batch state on error if needed, or keep it so they can try again
             }
         });
 
